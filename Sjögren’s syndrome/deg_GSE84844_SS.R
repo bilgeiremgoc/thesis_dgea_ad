@@ -15,6 +15,10 @@ library(pROC)
 library(MOFA2)
 library(CEMiTool)
 library(writexl)
+library(AnnotationDbi)
+library(hgu133a.db)
+library(hgu133plus2.db)
+library(dplyr)
 
 gse <- getGEO("GSE84844")
 

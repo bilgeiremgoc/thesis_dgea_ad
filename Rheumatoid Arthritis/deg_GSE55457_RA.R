@@ -1,9 +1,10 @@
-gse <- getGEO("GSE40611")
 
-gse1em <- getGEO("GSE40611", GSEMatrix = TRUE, AnnotGPL = TRUE)
+gse <- getGEO("GSE55457")
+
+gse1em <- getGEO("GSE55457", GSEMatrix = TRUE, AnnotGPL = TRUE)
 
 gse<- gse1em[[1]]
-  
+
 exprs_data <- exprs(gse)
 
 boxplot(exprs_data, outline = FALSE, las=2, main="Before Normalization")
@@ -14,15 +15,20 @@ boxplot(exprs_data, outline = FALSE, las=2, main="After Normalization")
 metadata <- pData(gse)
 head(metadata)
 
-group <- ifelse(grepl("control", metadata$`disease status:ch1`, ignore.case = TRUE), "control", "SS")
+group <- ifelse(metadata$`clinical status:ch1` == "rheumatoid arthritis", 
+                "RA", 
+                "control")
 group <- factor(group)
+
 table(group)
+
 
 design <- model.matrix(~0 + group)
 colnames(design) <- levels(group)
 
+
 fit <- lmFit(exprs_data, design)
-contrast_matrix <- makeContrasts(SS - control, levels = design)
+contrast_matrix <- makeContrasts(RA - control, levels = design)
 fit2 <- contrasts.fit(fit, contrast_matrix)
 fit2 <- eBayes(fit2)
 
@@ -38,9 +44,7 @@ deg <- deg %>%
   filter(!is.na(deg$gene_symbol))
 head(deg)
 
-
 # Volkan Plotu
-
 results$threshold <- as.factor(abs(results$logFC) > 0.5 & results$adj.P.Val < 0.05)
 
 ggplot(results, aes(x = logFC, y = -log10(adj.P.Val), color = threshold)) +
@@ -55,10 +59,21 @@ ggplot(results, aes(x = logFC, y = -log10(adj.P.Val), color = threshold)) +
 
 
 # Heatmap (ilk 50 DEG)
-pheatmap(exprs_data[rownames(deg)[1:14], ], scale = "row")
+top50 <- deg[order(deg$adj.P.Val), ][1:50, ]
+deg_ids <- rownames(top50)
 
+heatmap_data <- exprs_data[deg_ids, ]
 
-write_xlsx(deg, "deg_GSE40611_SS.xlsx")
+heatmap_data <- t(scale(t(heatmap_data)))
+
+pheatmap(heatmap_data, 
+         scale = "none", 
+         show_rownames = TRUE, 
+         cluster_rows = TRUE, 
+         cluster_cols = TRUE, 
+         main = "Top 50 DEG Heatmap")
+
+write_xlsx(deg, "deg_GSE55457_RA.xlsx")
 
 
 genes <- results$gene_symbol[!is.na(results$gene_symbol)]
@@ -78,7 +93,6 @@ head(go_enrich)
 barplot(go_enrich, showCategory = 20, title = "GO BP Enrichment")
 
 #kegg enrichment
-
 entrez_ids <- mapIds(org.Hs.eg.db,
                      keys = genes,
                      column = "ENTREZID",
@@ -99,13 +113,13 @@ head(kegg_enrich)
 # Barplot
 barplot(kegg_enrich, showCategory = 20, title = "KEGG Pathway Enrichment")
 
-write_xlsx(as.data.frame(go_enrich), "deg_GSE40611_SS_GO_enrichment.xlsx")
-write_xlsx(as.data.frame(kegg_enrich), "deg_GSE40611_SS_KEGG_enrichment.xlsx")
+write_xlsx(as.data.frame(go_enrich), "deg_GSE55457_RA_GO_enrichment.xlsx")
+write_xlsx(as.data.frame(kegg_enrich), "deg_GSE55457_RA_KEGG_enrichment.xlsx")
 
 reactome_enrich <- enrichPathway(entrez_ids, organism = "human", pvalueCutoff = 0.05, qvalueCutoff = 0.05)
 barplot(reactome_enrich, showCategory = 20, title = "Reactome Pathway Enrichment")
 
-write_xlsx(as.data.frame(reactome_enrich), "deg_GSE40611_SS_reactome_enrichment.xlsx")
+write_xlsx(as.data.frame(reactome_enrich), "deg_GSE55457_RA_reactome_enrichment.xlsx")
 
 
 # Bağışıklık Hücresi İnfiltrasyonu (xCell)
@@ -125,7 +139,7 @@ xcell_df <- as.data.frame(xcell_results)
 xcell_df <- cbind(Cell_Type = rownames(xcell_results), xcell_df)
 
 # Excel olarak kaydetme
-write_xlsx(xcell_df, "xcell_results_GSE40611.xlsx")
+write_xlsx(xcell_df, "xcell_results_GSE55457_RA.xlsx")
 
 
 # LogFC ve adj.P.Val eşiklerine göre filtreleme
@@ -137,20 +151,14 @@ deg_filtered <- results %>%
   filter(abs(logFC) > logfc_threshold & adj.P.Val < adj_pval_threshold)
 
 
-# Up ve down gen listelerini ayır
+# Up ve down gen listelerini ayırma
 up_genes <- deg_filtered$gene_symbol[deg_filtered$logFC > 0]
 down_genes <- deg_filtered$gene_symbol[deg_filtered$logFC < 0]
 
-write.table(up_genes, "up_genes_GSE84844.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
-write.table(down_genes, "down_genes_GSE84844.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
-
-print(dim(deg_filtered))  # Gen sayısını gör
-table(deg_filtered$logFC > 0)  # Up ve down genlerin sayısını gör
 
 
-
-
-
+print(dim(deg_filtered))  # Gen sayısını görme
+table(deg_filtered$logFC > 0)  # Up ve down genlerin sayısını görme
 
 
 
