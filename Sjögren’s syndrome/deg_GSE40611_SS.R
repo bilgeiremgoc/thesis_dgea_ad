@@ -148,49 +148,6 @@ barplot(reactome_enrich, showCategory = 20, title = "Reactome Pathway Enrichment
 write_xlsx(as.data.frame(reactome_enrich), "deg_GSE40611_SS_reactome_enrichment.xlsx")
 
 
-# Bağışıklık Hücresi İnfiltrasyonu (xCell)
-gene_symbols <- fData(gse)$`Gene symbol`
-
-exprs_data_with_symbols <- exprs_data[!is.na(gene_symbols) & gene_symbols != "", ]
-rownames(exprs_data_with_symbols) <- gene_symbols[!is.na(gene_symbols) & gene_symbols != ""]
-exprs_data_with_symbols <- as.data.frame(exprs_data_with_symbols)
-head(exprs_data_with_symbols)
-
-
-# xCell analizi
-xcell_results <- xCellAnalysis(exprs_data_with_symbols)
-
-# Sonuçları tabloya dönüştürme
-xcell_df <- as.data.frame(xcell_results)
-xcell_df <- cbind(Cell_Type = rownames(xcell_results), xcell_df)
-
-# Excel olarak kaydetme
-write_xlsx(xcell_df, "xcell_results_GSE40611.xlsx")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
