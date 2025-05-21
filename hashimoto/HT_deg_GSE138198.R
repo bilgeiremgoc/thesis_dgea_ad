@@ -8,7 +8,6 @@ gse<- gse1em[[1]]
 exprs_data <- exprs(gse)
 
 boxplot(exprs_data, outline = FALSE, las=2, main="Before Normalization")
-exprs_data <- log2(exprs_data + 1) 
 exprs_data <- normalizeBetweenArrays(exprs_data)
 boxplot(exprs_data, outline = FALSE, las=2, main="After Normalization")
 
@@ -46,12 +45,27 @@ results$gene_symbol <- mapIds(hugene10sttranscriptcluster.db,
                               multiVals = "first")
 head(results)
 
-deg <- subset(results, abs(logFC) > 0.5 & adj.P.Val < 0.05)
+deg <- subset(results, abs(logFC) > 1 & adj.P.Val < 0.05)
 deg <- deg %>% filter(!is.na(deg$gene_symbol))
 head(deg)
 
+write_xlsx(deg, "deg_GSE138198_HT.xlsx")
+
+deg_filtered <- deg %>% filter(!is.na(deg$gene_symbol))
+
+deg_filtered <- deg %>%
+  filter(adj.P.Val < 0.05 & abs(logFC) > 1)
+nrow(deg_filtered)
+
+up_genes <- deg_filtered %>% filter(logFC> 1)
+down_genes <- deg_filtered %>% filter(logFC < -1)
+
+write_xlsx(up_genes, "HT_deg_GSE138198_up_genes.xlsx")
+write_xlsx(down_genes, "HT_deg_GSE138198_down_genes.xlsx")
+
+
 # Volkan Plotu
-results$threshold <- as.factor(abs(results$logFC) > 0.5 & results$adj.P.Val < 0.05)
+results$threshold <- as.factor(abs(results$logFC) > 1 & results$adj.P.Val < 0.05)
 
 ggplot(results, aes(x = logFC, y = -log10(adj.P.Val), color = threshold)) +
   geom_point(alpha = 0.8, size = 1.5) +
@@ -77,109 +91,143 @@ pheatmap(heatmap_data,
          cluster_cols = TRUE, 
          main = "Top 50 DEG Heatmap")
 
-write_xlsx(deg, "deg_GSE138198_HT.xlsx")
+
 
 
 #GO, KEGG ve Reactome Pathway Enrichment
-genes <- results$gene_symbol[!is.na(results$gene_symbol)]
+deg$ENTREZID <- mapIds(hugene10sttranscriptcluster.db,
+  keys = rownames(deg),
+  column = "ENTREZID",
+  keytype = "PROBEID",
+  multiVals = "first"
+)
 
+entrez_ids <- deg$ENTREZID
 
-go_results_BP <- enrichGO(gene         = genes,
-                       OrgDb        = org.Hs.eg.db,
-                       keyType      = "SYMBOL",
-                       ont          = "BP",
-                       pAdjustMethod = "BH",
-                       pvalueCutoff  = 0.05,
-                       qvalueCutoff  = 0.2)
+#GO_BP
+go_result_BP <- enrichGO(gene = entrez_ids,
+                         OrgDb = org.Hs.eg.db,
+                         keyType = "ENTREZID",
+                         ont = "BP",
+                         pAdjustMethod = "BH",
+                         qvalueCutoff = 0.05,
+                         readable = TRUE)
 
-head(go_results_BP)
-barplot(go_results_BP, showCategory = 20, title = "GO BP Enrichment")
-write_xlsx(as.data.frame(go_results_BP), "deg_GSE138198_HT_GO_BP_enrichment.xlsx")
+head(go_result_BP)
+barplot(go_result_BP, showCategory = 20, title = "GO BP Enrichment")
+write_xlsx(as.data.frame(go_result_BP), "deg_GSE138198_HT_GO_BP_enrichment.xlsx")
 
-go_results_MF <- enrichGO(gene         = genes,
-                          OrgDb        = org.Hs.eg.db,
-                          keyType      = "SYMBOL",
-                          ont          = "MF",
-                          pAdjustMethod = "BH",
-                          pvalueCutoff  = 0.05,
-                          qvalueCutoff  = 0.2)
+#GO_MF
+go_result_MF<- enrichGO(gene = entrez_ids,
+                        OrgDb = org.Hs.eg.db,
+                        keyType = "ENTREZID",
+                        ont = "MF",
+                        pAdjustMethod = "BH",
+                        qvalueCutoff = 0.05,
+                        readable = TRUE)
 
-head(go_results_MF)
-barplot(go_results_MF, showCategory = 20, title = "GO MF Enrichment")
-write_xlsx(as.data.frame(go_results_MF), "deg_GSE138198_HT_GO_MF_enrichment.xlsx")
+head(go_result_MF)
+barplot(go_result_MF, showCategory = 20, title = "GO MF Enrichment")
+write_xlsx(as.data.frame(go_result_MF), "deg_GSE138198_HT_GO_MF_enrichment.xlsx")
 
-go_results_CC <- enrichGO(gene         = genes,
-                          OrgDb        = org.Hs.eg.db,
-                          keyType      = "SYMBOL",
-                          ont          = "CC",
-                          pAdjustMethod = "BH",
-                          pvalueCutoff  = 0.05,
-                          qvalueCutoff  = 0.2)
+#GO_CC
+go_result_CC <- enrichGO(gene = entrez_ids,
+                         OrgDb = org.Hs.eg.db,
+                         keyType = "ENTREZID",
+                         ont = "CC",
+                         pAdjustMethod = "BH",
+                         qvalueCutoff = 0.05,
+                         readable = TRUE)
 
-head(go_results_CC)
-barplot(go_results_CC, showCategory = 20, title = "GO CC Enrichment")
-write_xlsx(as.data.frame(go_results_CC), "deg_GSE138198_HT_GO_CC_enrichment.xlsx")
+head(go_result_CC)
+barplot(go_result_CC, showCategory = 20, title = "GO CC Enrichment")
+write_xlsx(as.data.frame(go_result_CC), "deg_GSE138198_HT_GO_CC_enrichment.xlsx")
 
 #KEGG enrichment
-entrez_ids <- mapIds(org.Hs.eg.db,
-                     keys = genes,
-                     column = "ENTREZID",
-                     keytype = "SYMBOL",
-                     multiVals = "first")
-
-entrez_ids <- entrez_ids[!is.na(entrez_ids)]
-
 kegg_enrich <- enrichKEGG(gene = entrez_ids,
                           organism = "hsa",
                           pAdjustMethod = "BH",
                           qvalueCutoff = 0.05)
 
 kegg_enrich <- setReadable(kegg_enrich, OrgDb = org.Hs.eg.db, keyType = "ENTREZID")
-
 head(kegg_enrich)
 barplot(kegg_enrich, showCategory = 20, title = "KEGG Pathway Enrichment")
 
 write_xlsx(as.data.frame(kegg_enrich), "deg_GSE138198_HT_KEGG_enrichment.xlsx")
 
+#Reactome
 reactome_enrich <- enrichPathway(gene = entrez_ids, 
                                  organism = "human", 
                                  pvalueCutoff = 0.1, 
                                  qvalueCutoff = 0.2)
 barplot(reactome_enrich, showCategory = 20, title = "Reactome Pathway Enrichment")
-
 write_xlsx(as.data.frame(reactome_enrich), "deg_GSE138198_HT_reactome_enrichment.xlsx")
 
 
-# Bağışıklık Hücresi İnfiltrasyonu (xCell)
-gene_symbols <- fData(gse)$`Gene symbol`
 
-exprs_data_with_symbols <- exprs_data[!is.na(gene_symbols) & gene_symbols != "", ]
-rownames(exprs_data_with_symbols) <- gene_symbols[!is.na(gene_symbols) & gene_symbols != ""]
-exprs_data_with_symbols <- as.data.frame(exprs_data_with_symbols)
-head(exprs_data_with_symbols)
 
-# xCell analizi
-xcell_results <- xCellAnalysis(exprs_data_with_symbols)
 
-xcell_df <- as.data.frame(xcell_results)
-xcell_df <- cbind(Cell_Type = rownames(xcell_results), xcell_df)
+#xCell İnfiltrasyonu
+gene_symbols <- getSYMBOL(rownames(exprs_data), "hugene10sttranscriptcluster.db")
+exprs_data_symbols <- exprs_data
+rownames(exprs_data_symbols) <- gene_symbols
 
-# Excel olarak kaydetme
+exprs_data_symbols <- exprs_data_symbols[!is.na(rownames(exprs_data_symbols)), ]
+exprs_data_symbols <- rowsum(exprs_data_symbols, group = rownames(exprs_data_symbols))
+
+xcell_result <- xCellAnalysis(exprs_data_symbols)
+
+xcell_df <- as.data.frame(xcell_result)
+xcell_df <- cbind(Cell_Type = rownames(xcell_result), xcell_df)
+
+pheatmap(xcell_result, 
+         main = "xCell Immune Infiltration - GSE138198",
+         scale = "row",
+         clustering_distance_rows = "euclidean",
+         clustering_distance_cols = "euclidean")
+
 write_xlsx(xcell_df, "xcell_results_deg_GSE138198_HT.xlsx")
 
 
-# LogFC ve adj.P.Val eşiklerine göre filtreleme
-logfc_threshold <- 1
-adj_pval_threshold <- 0.05
-
-deg_filtered <- results %>%
-  filter(!is.na(gene_symbol)) %>%
-  filter(abs(logFC) > logfc_threshold & adj.P.Val < adj_pval_threshold)
 
 
-# Up ve down gen listelerini ayırma
-up_genes <- deg_filtered$gene_symbol[deg_filtered$logFC > 0]
-down_genes <- deg_filtered$gene_symbol[deg_filtered$logFC < 0]
+xcell_result <- xCellAnalysis(exprs_data_symbols)
 
-print(dim(deg_filtered))  # Gen sayısını görme
-table(deg_filtered$logFC > 0)  # Up ve down genlerin sayısını görme
+xcell_matrix <- as.data.frame(t(xcell_result))
+xcell_matrix$sample <- rownames(xcell_matrix)
+xcell_matrix$group <- group 
+head(xcell_matrix)
+
+long_xcell <- xcell_matrix %>%
+  pivot_longer(cols = -c(sample, group), names_to = "cell_type", values_to = "proportion")
+
+
+stat_tests <- long_xcell %>%
+  group_by(cell_type) %>%
+  summarise(
+    p_value = wilcox.test(proportion ~ group)$p.value,
+    mean_SLE = mean(proportion[group == "SLE"]),
+    mean_control = mean(proportion[group == "control"])
+  ) %>%
+  mutate(adj_p = p.adjust(p_value, method = "fdr")) %>%
+  arrange(p_value)
+
+write_xlsx(stat_tests, "deg_GSE138198_xcell_stat_tests.xlsx")
+
+
+ggplot(long_xcell, aes(x = group, y = proportion, fill = group)) +
+  geom_boxplot(outlier.shape = NA) +
+  facet_wrap(~ cell_type, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Immune Cell Infiltration (xCell) - GSE138198") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+
+
+
+
+
+
+
