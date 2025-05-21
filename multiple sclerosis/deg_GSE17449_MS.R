@@ -31,3 +31,49 @@ deg <- deg %>% filter(!is.na(deg$GeneSymbol))
 head(deg)
 
 write_xlsx(deg, "deg_61635_SLE.xlsx")
+
+
+deg_table <- read.delim(file = "GSE17449.top.table.tsv")
+deg <- subset(deg_table, abs(logFC) > 0.5 & adj.P.Val < 0.05)
+deg <- deg %>% filter(!is.na(deg$GeneSymbol))
+head(deg)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#GSE111972
+
+deg_table_GSE111972 <- read.delim("GSE111972.top.table.tsv")
+
+deg <- subset(deg_table_GSE111972,log2FoldChange > 1 & padj < 0.5)
+deg <- deg %>% filter(!is.na(deg$Symbol))
+head(deg)
+
+
+write_xlsx(deg, "deg_GSE111972_MS.xlsx")
