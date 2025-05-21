@@ -19,6 +19,8 @@ library(AnnotationDbi)
 library(hgu133a.db)
 library(hgu133plus2.db)
 library(dplyr)
+library(tidyr)
+library(illuminaHumanv4.db)
 
 gse <- getGEO("GSE84844")
 
